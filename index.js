@@ -3,7 +3,7 @@ const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 5000;
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 
@@ -25,14 +25,66 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const servicesCollections = client.db('carDoctor').collection('services')
+    const bookingCollections = client.db('carDoctor').collection('bookings')
+
+    app.get('/services',async(req,res) => {
+      const coursor = servicesCollections.find()
+      const result = await coursor.toArray();
+       res.send(result)
+    })
+    app.get('/services/:id',async(req,res)=> {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const options = {
+           projection:{title:1,price:1,service_id:1,img:1}
+      }
+      const result = await servicesCollections.findOne(query,options)
+      res.send(result)
+    })
+    app.get('/bookings',async(req,res) => {
+      console.log(req.query)
+      let  query = {};
+      if (req.query?.email){
+        query= {email:req.query.email}
+      }
+      const result = await bookingCollections.find(query).toArray()
+      res.send(result);
+    })
+    app.post('/bookings',async(req,res) => {
+          const doc = req.body;
+          const result = await bookingCollections.insertOne(doc)
+          res.send(result)
+    })
+    app.put('/bookings/:id',async(req,res) => {
+        const updateBookings = req.body;
+        const id = req.params.id
+        const filter = {_id:new ObjectId(id)}
+        const updateDoc = {
+          $set: {
+            status:updateBookings.status
+          },
+        };
+        const result = await bookingCollections.updateOne(filter,updateDoc);
+        res.send(result)
+
+
+    })
+    app.delete('/bookings/:id',async(req,res) => {
+        const id = req.params.id
+        const query = {_id: new ObjectId(id)}
+        const result = await bookingCollections.deleteOne(query)
+        res.send(result)
+    })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
